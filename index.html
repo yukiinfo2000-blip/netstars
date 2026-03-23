@@ -2,607 +2,167 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>收益管理系统</title>
+<title>呼叫中心收益表</title>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
 <style>
-* {
-    box-sizing: border-box;
-}
-
 body {
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-    background: #f4f6f9;
-    margin: 0;
-    padding: 20px;
-    min-height: 100vh;
+    font-family: "Segoe UI","PingFang SC";
+    background: linear-gradient(#f4f6f9,#eef2f7);
+    margin:0;
 }
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #e0e0e0;
-}
-
-.header h1 {
-    margin: 0;
-    color: #2c3e50;
-    font-size: 28px;
-}
-
-.refresh-btn {
-    padding: 10px 24px;
-    background: #3498db;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-    transition: background 0.3s;
-}
-
-.refresh-btn:hover {
-    background: #2980b9;
-}
-
-.filter-bar {
-    margin-bottom: 30px;
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-
-.filter-bar label {
-    font-weight: 600;
-    color: #2c3e50;
-    margin-right: 10px;
-    font-size: 16px;
-}
-
-.filter-bar select {
-    padding: 10px 20px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 14px;
-    background: white;
-    cursor: pointer;
-    margin-right: 20px;
-}
-
-.stats-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-}
-
-.card {
-    background: white;
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    text-align: center;
-    transition: transform 0.3s, box-shadow 0.3s;
-}
-
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-}
-
-.card h3 {
-    margin: 0 0 15px 0;
-    font-size: 14px;
-    color: #7f8c8d;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.card .value {
-    font-size: 36px;
-    font-weight: bold;
-    color: #2c3e50;
-}
-
-.card.cost .value {
-    color: #e67e22;
-}
-
-.card.revenue .value {
-    color: #27ae60;
-}
-
-.card.profit .value {
-    color: #3498db;
-}
-
-.card.profit.negative .value {
-    color: #e74c3c;
-}
-
-.chart-container {
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    margin-bottom: 30px;
-}
-
-canvas {
-    max-height: 400px;
-    width: 100%;
-}
-
-.data-table {
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    overflow-x: auto;
-}
-
-.data-table h3 {
-    margin: 0 0 15px 0;
-    color: #2c3e50;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-th, td {
-    padding: 12px;
-    text-align: right;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-th:first-child, td:first-child {
-    text-align: left;
-    font-weight: 600;
-}
-
-th {
-    background: #f8f9fa;
-    color: #2c3e50;
-    font-weight: 600;
-}
-
-tr:hover {
-    background: #f8f9fa;
-}
-
-.loading {
-    text-align: center;
-    padding: 50px;
-    color: #7f8c8d;
-    font-size: 18px;
-}
-
-.error {
-    text-align: center;
-    padding: 50px;
-    color: #e74c3c;
-    font-size: 18px;
-}
-
-@media (max-width: 768px) {
-    body {
-        padding: 10px;
-    }
-    
-    .stats-cards {
-        grid-template-columns: 1fr;
-    }
-    
-    .card .value {
-        font-size: 28px;
-    }
-    
-    th, td {
-        padding: 8px;
-        font-size: 12px;
-    }
-}
+.header { text-align:center; padding:20px; font-size:26px; font-weight:600;}
+.summary { display:flex; gap:16px; padding:0 30px;}
+.card { flex:1; border-radius:14px; padding:18px; color:#fff;}
+.cost { background:#7f8c8d; }
+.revenue { background:#2c3e50; }
+.profit { background:#27ae60; }
+.card p { font-size:24px; margin:5px 0 0;}
+.main { padding:20px 30px 30px;}
+.chart-box { background:#fff; border-radius:14px; padding:15px; height:260px;}
+.bottom-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+select { margin:10px auto; display:block; padding:5px 10px;}
 </style>
 </head>
+
 <body>
 
-<div class="container">
-    <div class="header">
-        <h1>📊 收益报表系统</h1>
-        <button class="refresh-btn" onclick="refreshData()">🔄 刷新数据</button>
-    </div>
-    
-    <div class="filter-bar">
-        <label>📅 选择月份：</label>
-        <select id="monthSelect" onchange="renderMonth()"></select>
-        <span style="color: #7f8c8d; margin-left: 10px;">点击图表上的点也可切换月份</span>
-    </div>
-    
-    <div class="stats-cards">
-        <div class="card cost">
-            <h3>💰 总成本</h3>
-            <div class="value" id="cost">--</div>
-        </div>
-        <div class="card revenue">
-            <h3>📈 总收入</h3>
-            <div class="value" id="revenue">--</div>
-        </div>
-        <div class="card profit" id="profitCard">
-            <h3>🎯 净利润</h3>
-            <div class="value" id="profit">--</div>
-        </div>
-    </div>
-    
-    <div class="chart-container">
-        <canvas id="profitChart"></canvas>
-    </div>
-    
-    <div class="data-table">
-        <h3>📋 月度明细表</h3>
-        <table id="dataTable">
-            <thead>
-                <tr>
-                    <th>月份</th>
-                    <th>成本 (元)</th>
-                    <th>收入 (元)</th>
-                    <th>利润 (元)</th>
-                    <th>利润率</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody">
-                <tr>
-                    <td colspan="5" class="loading">加载中...</td>
-                </tr>
-            </tbody>
-        </table>
+<div class="header">📊 呼叫中心收益表</div>
+
+<select id="monthSelect"></select>
+
+<div class="summary">
+    <div class="card cost"><h3>成本</h3><p id="cost"></p></div>
+    <div class="card revenue"><h3>收入</h3><p id="revenue"></p></div>
+    <div class="card profit"><h3>利润</h3><p id="profit"></p></div>
+</div>
+
+<div class="main">
+    <div class="chart-box"><canvas id="profitChart"></canvas></div>
+    <div class="bottom-grid">
+        <div class="chart-box"><canvas id="revenueChart"></canvas></div>
+        <div class="chart-box"><canvas id="costChart"></canvas></div>
     </div>
 </div>
 
 <script>
-// ==================== 请填写你的 Supabase 配置 ====================
-const SUPABASE_URL = "https://ieijoczgnndiqmowadty.supabase.co";      // 替换为你的 Supabase URL
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllaWpvY3pnbm5kaXFtb3dhZHR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMDM4MzksImV4cCI6MjA4ODc3OTgzOX0.vkhnClBek5ZZvJfW9fZwRpKnAVRViTd3EJOsWOJNuwg";                        // 替换为你的 anon public key
-// ================================================================
 
-// 检查配置是否已填写
-if (!SUPABASE_URL || SUPABASE_URL === "https://你的项目ID.supabase.co") {
-    console.warn("⚠️ 请先在代码中填写 SUPABASE_URL 和 SUPABASE_KEY");
-    document.body.innerHTML = '<div class="error">⚠️ 系统配置错误，请在代码中填写 Supabase URL 和 Key</div>';
+// ✅ Supabase配置（替换）
+const SUPABASE_URL = "https://ieijoczgnndiqmowadty.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllaWpvY3pnbm5kaXFtb3dhZHR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMDM4MzksImV4cCI6MjA4ODc3OTgzOX0.vkhnClBek5ZZvJfW9fZwRpKnAVRViTd3EJOsWOJNuwg";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// 当前月份
+const currentMonth = new Date().getMonth() + 1;
+
+// 下拉框
+const select = document.getElementById("monthSelect");
+for(let i=1;i<=12;i++){
+    let op = document.createElement("option");
+    op.value=i;
+    op.text=i+"月";
+    if(i===currentMonth) op.selected=true;
+    select.appendChild(op);
 }
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// 图表
+let charts=[];
 
-let globalData = [];
-let profitChart = null;
+// ✅ 计算逻辑
+function calcCost(fi,fi1,m){
 
-// ==================== 数据加载 ====================
-async function loadData() {
-    try {
-        console.log("开始加载数据...");
-        
-        // 获取月度数据 FI 表
-        const { data: fiData, error: fiError } = await supabase
-            .from("FI")
-            .select("*")
-            .order("month", { ascending: true });
-        
-        if (fiError) {
-            console.error("FI表查询错误:", fiError);
-            throw new Error(`FI表读取失败: ${fiError.message}`);
-        }
-        
-        // 获取固定数据 FI1 表
-        const { data: fi1Data, error: fi1Error } = await supabase
-            .from("FI1")
-            .select("*")
-            .maybeSingle();
-        
-        if (fi1Error) {
-            console.error("FI1表查询错误:", fi1Error);
-            throw new Error(`FI1表读取失败: ${fi1Error.message}`);
-        }
-        
-        if (!fiData || fiData.length === 0) {
-            console.warn("FI表数据为空，使用默认数据");
-        }
-        
-        if (!fi1Data) {
-            console.warn("FI1表数据为空，使用默认数据");
-        }
-        
-        // 默认的 FI1 数据（如果没有数据则使用默认值）
-        const defaultFI1 = {
-            system1: 12000,
-            system2: 8000,
-            office: 6000,
-            travel: 500,
-            supplies: 300,
-            other1: 10000,
-            other2: 8000,
-            other3: 5000
-        };
-        
-        const fi1 = fi1Data || defaultFI1;
-        
-        // 构建月度数据
-        globalData = [];
-        
-        for (let month = 1; month <= 12; month++) {
-            const f = fiData?.find(item => item.month === month) || {};
-            
-            // 成本计算
-            let cost = (
-                (f.other || 0) + 
-                (f.other1 || 0) + 
-                (f.other2 || 0) +
-                (fi1.system1 || 0) / 12 +
-                (fi1.system2 || 0) / 12 +
-                (fi1.office || 0) / 12 +
-                (fi1.travel || 0) +
-                (fi1.supplies || 0)
-            );
-            
-            // 3月特殊扣减
-            if (month === 3) {
-                cost -= (f.other3 || 0);
-            }
-            
-            // 收入计算
-            let revenue = (
-                (fi1.other1 || 0) / 12 +
-                (fi1.other2 || 0) / 12 +
-                (fi1.other3 || 0) / 12
-            );
-            
-            // 如果有月度收入数据，可以加上
-            if (f.revenue) revenue += f.revenue;
-            
-            const profit = revenue - cost;
-            const profitMargin = revenue > 0 ? (profit / revenue * 100) : 0;
-            
-            globalData.push({
-                month,
-                cost: Math.max(0, cost),
-                revenue: Math.max(0, revenue),
-                profit,
-                profitMargin
-            });
-        }
-        
-        console.log("数据加载完成:", globalData);
-        return true;
-        
-    } catch (error) {
-        console.error("数据加载失败:", error);
-        return false;
-    }
+let base = (fi.other||0)+(fi.other1||0)+(fi.other2||0);
+
+let cost =
+base
++ (fi1.system1||0)/12
++ (fi1.system2||0)/12
++ (fi1.office||0)/12
++ (fi1.travel||0)
++ (fi1.supplies||0);
+
+// 3月特殊
+if(m==3){
+    cost -= (fi.other3||0);
 }
 
-// ==================== 渲染界面 ====================
-function renderMonth() {
-    const monthSelect = document.getElementById("monthSelect");
-    const selectedMonth = parseInt(monthSelect.value);
-    const data = globalData[selectedMonth - 1];
-    
-    if (!data) return;
-    
-    // 更新卡片数值
-    document.getElementById("cost").innerText = data.cost.toLocaleString('zh-CN', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
-    document.getElementById("revenue").innerText = data.revenue.toLocaleString('zh-CN', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
-    document.getElementById("profit").innerText = data.profit.toLocaleString('zh-CN', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
-    
-    // 利润为负数时添加特殊样式
-    const profitCard = document.getElementById("profitCard");
-    if (data.profit < 0) {
-        profitCard.classList.add("negative");
-    } else {
-        profitCard.classList.remove("negative");
-    }
-    
-    // 更新图表高亮
-    if (profitChart) {
-        profitChart.data.datasets[0].pointRadius = globalData.map((_, idx) => 
-            idx === selectedMonth - 1 ? 10 : 4
-        );
-        profitChart.data.datasets[0].pointBackgroundColor = globalData.map((_, idx) => 
-            idx === selectedMonth - 1 ? "#ff6b6b" : "#3498db"
-        );
-        profitChart.update();
-    }
+return cost;
 }
 
-function renderTable() {
-    const tableBody = document.getElementById("tableBody");
-    
-    if (!globalData || globalData.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="5" class="error">暂无数据</td></tr>';
-        return;
-    }
-    
-    tableBody.innerHTML = globalData.map(data => {
-        const profitClass = data.profit < 0 ? 'style="color: #e74c3c;"' : '';
-        const profitMarginClass = data.profitMargin < 0 ? 'style="color: #e74c3c;"' : '';
-        
-        return `
-            <tr>
-                <td><strong>${data.month}月</strong></td>
-                <td>${data.cost.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>${data.revenue.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td ${profitClass}>${data.profit.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td ${profitMarginClass}>${data.profitMargin.toFixed(2)}%</td>
-            </tr>
-        `;
-    }).join('');
+function calcRevenue(fi1){
+return (fi1.other1||0)/12 +
+       (fi1.other2||0)/12 +
+       (fi1.other3||0)/12;
 }
 
-function initMonthSelect() {
-    const select = document.getElementById("monthSelect");
-    const currentMonth = new Date().getMonth() + 1;
-    
-    select.innerHTML = "";
-    
-    for (let i = 1; i <= 12; i++) {
-        const option = document.createElement("option");
-        option.value = i;
-        option.innerText = `${i}月`;
-        if (i === currentMonth) {
-            option.selected = true;
-        }
-        select.appendChild(option);
-    }
+// 读取数据
+async function load(){
+
+let month = parseInt(select.value);
+
+// FI表（按月）
+let {data:fiData} = await db
+.from("FI")
+.select("*")
+.eq("month",month)
+.single();
+
+// FI1表（默认只有一行）
+let {data:fi1Data} = await db
+.from("FI1")
+.select("*")
+.single();
+
+let cost = calcCost(fiData,fi1Data,month);
+let revenue = calcRevenue(fi1Data);
+let profit = revenue - cost;
+
+// KPI
+document.getElementById("cost").innerText = cost.toFixed(0);
+document.getElementById("revenue").innerText = revenue.toFixed(0);
+document.getElementById("profit").innerText = profit.toFixed(0);
+
+// 模拟全年（简单：用当前值填充）
+let costArr = Array(12).fill(cost);
+let revArr = Array(12).fill(revenue);
+let profitArr = revArr.map((v,i)=>v-costArr[i]);
+
+drawCharts(costArr,revArr,profitArr,month);
+
 }
 
-function initChart() {
-    const ctx = document.getElementById("profitChart").getContext("2d");
-    
-    if (profitChart) {
-        profitChart.destroy();
-    }
-    
-    profitChart = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
-            datasets: [{
-                label: "月度利润",
-                data: globalData.map(d => d.profit),
-                borderColor: "#3498db",
-                backgroundColor: "rgba(52, 152, 219, 0.1)",
-                borderWidth: 3,
-                pointRadius: 4,
-                pointBackgroundColor: "#3498db",
-                pointBorderColor: "#fff",
-                pointBorderWidth: 2,
-                pointHoverRadius: 8,
-                tension: 0.3,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const value = context.raw;
-                            return `利润: ¥${value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                        }
-                    }
-                },
-                legend: {
-                    position: "top"
-                }
-            },
-            scales: {
-                y: {
-                    ticks: {
-                        callback: function(value) {
-                            return "¥" + value.toLocaleString();
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: "金额 (元)"
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: "月份"
-                    },
-                    onClick: function(event, activeElements) {
-                        if (activeElements && activeElements.length > 0) {
-                            const index = activeElements[0].index;
-                            const monthSelect = document.getElementById("monthSelect");
-                            monthSelect.value = index + 1;
-                            renderMonth();
-                        }
-                    }
-                }
-            },
-            onClick: function(event, activeElements) {
-                if (activeElements && activeElements.length > 0) {
-                    const index = activeElements[0].index;
-                    const monthSelect = document.getElementById("monthSelect");
-                    monthSelect.value = index + 1;
-                    renderMonth();
-                }
-            }
-        }
-    });
+// 图表
+function drawCharts(cost,rev,profit,m){
+
+charts.forEach(c=>c.destroy());
+charts=[];
+
+function make(id,data,label){
+return new Chart(document.getElementById(id),{
+type:"line",
+data:{
+labels:[1,2,3,4,5,6,7,8,9,10,11,12],
+datasets:[{label,data,borderWidth:2,tension:0.3}]
+},
+options:{maintainAspectRatio:false}
+});
 }
 
-// 刷新数据
-async function refreshData() {
-    const refreshBtn = document.querySelector(".refresh-btn");
-    const originalText = refreshBtn.innerText;
-    refreshBtn.innerText = "加载中...";
-    refreshBtn.disabled = true;
-    
-    const success = await loadData();
-    
-    if (success) {
-        initMonthSelect();
-        initChart();
-        renderMonth();
-        renderTable();
-    } else {
-        alert("数据加载失败，请检查控制台错误信息");
-    }
-    
-    refreshBtn.innerText = originalText;
-    refreshBtn.disabled = false;
+charts.push(make("costChart",cost,"成本"));
+charts.push(make("revenueChart",rev,"收入"));
+charts.push(make("profitChart",profit,"利润"));
+
 }
 
-// ==================== 初始化 ====================
-async function init() {
-    // 显示加载状态
-    document.getElementById("tableBody").innerHTML = '<tr><td colspan="5" class="loading">加载数据中...</td></tr>';
-    
-    const success = await loadData();
-    
-    if (success) {
-        initMonthSelect();
-        initChart();
-        renderMonth();
-        renderTable();
-    } else {
-        document.getElementById("tableBody").innerHTML = '<tr><td colspan="5" class="error">数据加载失败，请检查 Supabase 配置和数据库表</td></tr>';
-        document.querySelector(".filter-bar").innerHTML += '<div class="error" style="margin-top: 10px;">⚠️ 数据加载失败，请确保：<br>1. Supabase URL 和 Key 已正确填写<br>2. 数据库表 FI 和 FI1 已创建<br>3. 网络连接正常</div>';
-    }
-}
+// 切换
+select.onchange = load;
 
-// 页面加载完成后初始化
-document.addEventListener("DOMContentLoaded", init);
+// 初始化
+load();
+
 </script>
+
 </body>
 </html>

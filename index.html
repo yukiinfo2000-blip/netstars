@@ -2,204 +2,641 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<title>收益系统</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>收益管理系统</title>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body{font-family:"Segoe UI";background:#f4f6f9;margin:0;}
-.center{display:flex;justify-content:center;align-items:center;height:100vh;}
-.box{background:#fff;padding:30px;border-radius:12px;width:300px;}
-input{width:100%;padding:10px;margin:8px 0;}
-button{width:100%;padding:10px;background:#2c3e50;color:#fff;border:none;margin-top:5px;}
-.hidden{display:none;}
-#app{padding:20px;}
-select{padding:8px;margin:10px 0;}
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background: #f4f6f9;
+    margin: 0;
+    min-height: 100vh;
+}
+
+.center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.box {
+    background: #fff;
+    padding: 40px 35px;
+    border-radius: 16px;
+    width: 360px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+
+.box h3 {
+    margin: 0 0 25px 0;
+    text-align: center;
+    color: #333;
+    font-size: 24px;
+}
+
+.box input {
+    width: 100%;
+    padding: 12px 15px;
+    margin: 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.box input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.box button {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.box button:first-of-type {
+    background: #2c3e50;
+    color: white;
+}
+
+.box button:first-of-type:hover {
+    background: #1a2632;
+    transform: translateY(-2px);
+}
+
+.box button:last-of-type {
+    background: #ecf0f1;
+    color: #2c3e50;
+}
+
+.box button:last-of-type:hover {
+    background: #d5dbdb;
+    transform: translateY(-2px);
+}
+
+#msg {
+    color: #e74c3c;
+    font-size: 14px;
+    text-align: center;
+    margin-top: 15px;
+    margin-bottom: 0;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#app {
+    padding: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.header h2 {
+    margin: 0;
+    color: #2c3e50;
+}
+
+.header button {
+    padding: 10px 24px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.3s;
+}
+
+.header button:hover {
+    background: #c0392b;
+}
+
+.filter-bar {
+    margin-bottom: 30px;
+}
+
+.filter-bar label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-right: 10px;
+}
+
+.filter-bar select {
+    padding: 10px 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+}
+
+.stats-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    text-align: center;
+    transition: transform 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+.card h3 {
+    margin: 0 0 15px 0;
+    font-size: 14px;
+    color: #7f8c8d;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.card .value {
+    font-size: 32px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.card.cost .value {
+    color: #e67e22;
+}
+
+.card.revenue .value {
+    color: #27ae60;
+}
+
+.card.profit .value {
+    color: #3498db;
+}
+
+.card.profit.negative .value {
+    color: #e74c3c;
+}
+
+.chart-container {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+canvas {
+    max-height: 400px;
+    width: 100%;
+}
+
+.loading {
+    text-align: center;
+    padding: 50px;
+    color: #7f8c8d;
+}
+
+@media (max-width: 768px) {
+    #app {
+        padding: 15px;
+    }
+    
+    .stats-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .box {
+        width: 90%;
+        padding: 25px;
+    }
+}
 </style>
 </head>
-
 <body>
 
-<!-- 登录 -->
+<!-- 登录页面 -->
 <div id="loginPage" class="center">
   <div class="box">
-    <h3>🔐 登录系统</h3>
-    <input id="email" placeholder="邮箱">
-    <input id="password" type="password" placeholder="密码">
-    <button onclick="login()">登录</button>
-    <button onclick="signup()">注册</button>
-    <p id="msg" style="color:red;"></p>
+    <h3>🔐 收益管理系统</h3>
+    <input type="email" id="email" placeholder="电子邮箱" autocomplete="email">
+    <input type="password" id="password" placeholder="密码" autocomplete="current-password">
+    <button id="loginBtn">登录</button>
+    <button id="signupBtn">注册新账号</button>
+    <p id="msg"></p>
   </div>
 </div>
 
-<!-- 系统 -->
+<!-- 主应用页面 -->
 <div id="app" class="hidden">
-
-<h2>📊 收益报表</h2>
-<button onclick="logout()">退出登录</button>
-
-<label>选择月份：</label>
-<select id="monthSelect" onchange="renderMonth()"></select>
-
-<p>成本：<span id="cost"></span></p>
-<p>收入：<span id="revenue"></span></p>
-<p>利润：<span id="profit"></span></p>
-
-<canvas id="chart"></canvas>
-
+  <div class="header">
+    <h2>📊 财务报表</h2>
+    <button id="logoutBtn">退出登录</button>
+  </div>
+  
+  <div class="filter-bar">
+    <label>📅 选择月份：</label>
+    <select id="monthSelect"></select>
+  </div>
+  
+  <div class="stats-cards">
+    <div class="card cost">
+      <h3>💰 成本</h3>
+      <div class="value" id="cost">--</div>
+    </div>
+    <div class="card revenue">
+      <h3>📈 收入</h3>
+      <div class="value" id="revenue">--</div>
+    </div>
+    <div class="card profit" id="profitCard">
+      <h3>🎯 利润</h3>
+      <div class="value" id="profit">--</div>
+    </div>
+  </div>
+  
+  <div class="chart-container">
+    <canvas id="profitChart"></canvas>
+  </div>
 </div>
 
 <script>
+// ==================== 请填写你的 Supabase 配置 ====================
+const SUPABASE_URL = "https://ieijoczgnndiqmowadty.supabase.co";      // 替换为你的 Supabase URL
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllaWpvY3pnbm5kaXFtb3dhZHR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMDM4MzksImV4cCI6MjA4ODc3OTgzOX0.vkhnClBek5ZZvJfW9fZwRpKnAVRViTd3EJOsWOJNuwg";                        // 替换为你的 anon public key
+// =================================================================
 
-// 👉 填你的
-const SUPABASE_URL = "https://ieijoczgnndiqmowadty.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllaWpvY3pnbm5kaXFtb3dhZHR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMDM4MzksImV4cCI6MjA4ODc3OTgzOX0.vkhnClBek5ZZvJfW9fZwRpKnAVRViTd3EJOsWOJNuwg";
+// 检查配置是否已填写
+if (!SUPABASE_URL || SUPABASE_URL === "https://你的项目ID.supabase.co") {
+    console.warn("⚠️ 请先在代码中填写 SUPABASE_URL 和 SUPABASE_KEY");
+    document.getElementById("msg").innerHTML = "⚠️ 系统配置错误，请联系管理员";
+}
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let globalData = [];
-let chart;
+let profitChart = null;
 
-// 登录
-async function login(){
-let email=document.getElementById("email").value.trim();
-let password=document.getElementById("password").value.trim();
+// ==================== 认证相关函数 ====================
+window.login = async function() {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+    const msgEl = document.getElementById("msg");
+    
+    if (!email || !password) {
+        msgEl.innerText = "请输入邮箱和密码";
+        return;
+    }
+    
+    msgEl.innerText = "登录中...";
+    msgEl.style.color = "#3498db";
+    
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    
+    if (error) {
+        msgEl.innerText = error.message;
+        msgEl.style.color = "#e74c3c";
+        console.error("登录错误:", error);
+    } else {
+        msgEl.innerText = "登录成功！";
+        msgEl.style.color = "#27ae60";
+        init();
+    }
+};
 
-let {error}=await supabase.auth.signInWithPassword({email,password});
+window.signup = async function() {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+    const msgEl = document.getElementById("msg");
+    
+    if (!email || !password) {
+        msgEl.innerText = "请输入邮箱和密码";
+        return;
+    }
+    
+    if (password.length < 6) {
+        msgEl.innerText = "密码长度至少6位";
+        return;
+    }
+    
+    msgEl.innerText = "注册中...";
+    msgEl.style.color = "#3498db";
+    
+    const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+            emailRedirectTo: window.location.origin
+        }
+    });
+    
+    if (error) {
+        msgEl.innerText = error.message;
+        msgEl.style.color = "#e74c3c";
+        console.error("注册错误:", error);
+    } else {
+        if (data.user?.identities?.length === 0) {
+            msgEl.innerText = "该邮箱已注册，请直接登录";
+            msgEl.style.color = "#e67e22";
+        } else {
+            msgEl.innerText = "注册成功！请查收邮箱验证邮件后登录";
+            msgEl.style.color = "#27ae60";
+        }
+    }
+};
 
-if(error){
-document.getElementById("msg").innerText=error.message;
-}else{
-init();
+window.logout = async function() {
+    await supabase.auth.signOut();
+    location.reload();
+};
+
+// ==================== 数据加载和渲染 ====================
+async function loadData() {
+    try {
+        // 获取月度数据 FI 表
+        const { data: fiData, error: fiError } = await supabase
+            .from("FI")
+            .select("*");
+        
+        if (fiError) {
+            console.error("FI表查询错误:", fiError);
+            throw new Error(`FI表读取失败: ${fiError.message}`);
+        }
+        
+        // 获取固定数据 FI1 表
+        const { data: fi1Data, error: fi1Error } = await supabase
+            .from("FI1")
+            .select("*")
+            .single();
+        
+        if (fi1Error) {
+            console.error("FI1表查询错误:", fi1Error);
+            throw new Error(`FI1表读取失败: ${fi1Error.message}`);
+        }
+        
+        if (!fiData || !fi1Data) {
+            throw new Error("数据为空，请检查数据库表是否已创建");
+        }
+        
+        // 构建月度数据
+        globalData = [];
+        
+        for (let month = 1; month <= 12; month++) {
+            const f = fiData.find(item => item.month === month) || {};
+            
+            // 成本计算
+            let cost = (
+                (f.other || 0) + 
+                (f.other1 || 0) + 
+                (f.other2 || 0) +
+                (fi1Data.system1 || 0) / 12 +
+                (fi1Data.system2 || 0) / 12 +
+                (fi1Data.office || 0) / 12 +
+                (fi1Data.travel || 0) +
+                (fi1Data.supplies || 0)
+            );
+            
+            // 3月特殊扣减
+            if (month === 3) {
+                cost -= (f.other3 || 0);
+            }
+            
+            // 收入计算
+            let revenue = (
+                (fi1Data.other1 || 0) / 12 +
+                (fi1Data.other2 || 0) / 12 +
+                (fi1Data.other3 || 0) / 12
+            );
+            
+            const profit = revenue - cost;
+            
+            globalData.push({
+                month,
+                cost: Math.max(0, cost),
+                revenue: Math.max(0, revenue),
+                profit
+            });
+        }
+        
+        return true;
+        
+    } catch (error) {
+        console.error("数据加载失败:", error);
+        alert(`数据加载失败：${error.message}\n\n请检查：\n1. Supabase配置是否正确\n2. 数据库表 FI 和 FI1 是否存在\n3. RLS权限是否已配置`);
+        return false;
+    }
 }
+
+function renderMonth() {
+    const monthSelect = document.getElementById("monthSelect");
+    const selectedMonth = parseInt(monthSelect.value);
+    const data = globalData[selectedMonth - 1];
+    
+    if (!data) return;
+    
+    // 更新卡片数值
+    document.getElementById("cost").innerText = data.cost.toFixed(2);
+    document.getElementById("revenue").innerText = data.revenue.toFixed(2);
+    document.getElementById("profit").innerText = data.profit.toFixed(2);
+    
+    // 利润为负数时添加特殊样式
+    const profitCard = document.getElementById("profitCard");
+    if (data.profit < 0) {
+        profitCard.classList.add("negative");
+    } else {
+        profitCard.classList.remove("negative");
+    }
+    
+    // 更新图表高亮
+    if (profitChart) {
+        profitChart.data.datasets[0].pointRadius = globalData.map((_, idx) => 
+            idx === selectedMonth - 1 ? 8 : 3
+        );
+        profitChart.data.datasets[0].pointBackgroundColor = globalData.map((_, idx) => 
+            idx === selectedMonth - 1 ? "#ff6b6b" : "#3498db"
+        );
+        profitChart.update();
+    }
 }
 
-// 注册
-async function signup(){
-let email=document.getElementById("email").value.trim();
-let password=document.getElementById("password").value.trim();
-
-let {error}=await supabase.auth.signUp({email,password});
-document.getElementById("msg").innerText=error?error.message:"注册成功";
+function initMonthSelect() {
+    const select = document.getElementById("monthSelect");
+    const currentMonth = new Date().getMonth() + 1;
+    
+    select.innerHTML = "";
+    
+    for (let i = 1; i <= 12; i++) {
+        const option = document.createElement("option");
+        option.value = i;
+        option.innerText = `${i}月`;
+        if (i === currentMonth) {
+            option.selected = true;
+        }
+        select.appendChild(option);
+    }
+    
+    select.onchange = renderMonth;
 }
 
-// 退出
-async function logout(){
-await supabase.auth.signOut();
-location.reload();
+function initChart() {
+    const ctx = document.getElementById("profitChart").getContext("2d");
+    
+    if (profitChart) {
+        profitChart.destroy();
+    }
+    
+    profitChart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
+            datasets: [{
+                label: "月度利润",
+                data: globalData.map(d => d.profit),
+                borderColor: "#3498db",
+                backgroundColor: "rgba(52, 152, 219, 0.1)",
+                borderWidth: 3,
+                pointRadius: 3,
+                pointBackgroundColor: "#3498db",
+                pointBorderColor: "#fff",
+                pointBorderWidth: 2,
+                pointHoverRadius: 8,
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `利润: ¥${context.raw.toFixed(2)}`;
+                        }
+                    }
+                },
+                legend: {
+                    position: "top"
+                }
+            },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: function(value) {
+                            return "¥" + value.toFixed(0);
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: "金额 (元)"
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: "月份"
+                    }
+                }
+            }
+        }
+    });
 }
 
-// 初始化
-async function init(){
-
-document.getElementById("loginPage").classList.add("hidden");
-document.getElementById("app").classList.remove("hidden");
-
-// 当前月
-let currentMonth = new Date().getMonth()+1;
-
-// 下拉
-let select=document.getElementById("monthSelect");
-for(let i=1;i<=12;i++){
-let opt=document.createElement("option");
-opt.value=i;
-opt.innerText=i+"月";
-if(i===currentMonth) opt.selected=true;
-select.appendChild(opt);
+async function init() {
+    // 显示主界面
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    
+    // 加载数据
+    const success = await loadData();
+    if (!success) {
+        alert("数据加载失败，请检查控制台错误信息");
+        return;
+    }
+    
+    // 初始化月份选择器
+    initMonthSelect();
+    
+    // 初始化图表
+    initChart();
+    
+    // 渲染当前月份
+    renderMonth();
 }
 
-// 拉数据
-let {data:fi}=await supabase.from("FI").select("*");
-let {data:fi1}=await supabase.from("FI1").select("*").single();
-
-if(!fi || !fi1){
-alert("数据读取失败，请检查RLS权限");
-return;
+// ==================== 检查自动登录 ====================
+async function checkAutoLogin() {
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            init();
+        }
+    } catch (error) {
+        console.error("自动登录检查失败:", error);
+    }
 }
 
-globalData=[];
-
-for(let m=1;m<=12;m++){
-
-let f=fi.find(i=>i.month==m)||{};
-
-// 成本（已修正结构）
-let cost=
-(f.other||0)+(f.other1||0)+(f.other2||0)
-+(fi1.system1||0)/12
-+(fi1.system2||0)/12
-+(fi1.office||0)/12
-+(fi1.travel||0)
-+(fi1.supplies||0);
-
-// 3月特殊
-if(m==3){
-cost -= (f.other3||0);
-}
-
-// 收入
-let revenue=
-(fi1.other1||0)/12+
-(fi1.other2||0)/12+
-(fi1.other3||0)/12;
-
-globalData.push({
-cost,
-revenue,
-profit:revenue-cost
+// ==================== 绑定事件 ====================
+document.addEventListener("DOMContentLoaded", function() {
+    // 绑定登录按钮
+    const loginBtn = document.getElementById("loginBtn");
+    if (loginBtn) {
+        loginBtn.addEventListener("click", window.login);
+    }
+    
+    // 绑定注册按钮
+    const signupBtn = document.getElementById("signupBtn");
+    if (signupBtn) {
+        signupBtn.addEventListener("click", window.signup);
+    }
+    
+    // 绑定退出按钮
+    const logoutBtn = document.getElementById("logoutBtn");
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", window.logout);
+    }
+    
+    // 回车登录
+    const passwordInput = document.getElementById("password");
+    if (passwordInput) {
+        passwordInput.addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                window.login();
+            }
+        });
+    }
+    
+    // 检查自动登录
+    checkAutoLogin();
 });
-}
-
-// 图
-drawChart();
-
-// 渲染
-renderMonth();
-
-}
-
-// 渲染月份
-function renderMonth(){
-
-let m=parseInt(document.getElementById("monthSelect").value);
-
-document.getElementById("cost").innerText=globalData[m-1].cost.toFixed(2);
-document.getElementById("revenue").innerText=globalData[m-1].revenue.toFixed(2);
-document.getElementById("profit").innerText=globalData[m-1].profit.toFixed(2);
-
-// 高亮
-chart.data.datasets[0].pointRadius = globalData.map((_,i)=> i===m-1?6:3);
-chart.update();
-
-}
-
-// 图
-function drawChart(){
-
-chart=new Chart(document.getElementById("chart"),{
-type:"line",
-data:{
-labels:[1,2,3,4,5,6,7,8,9,10,11,12],
-datasets:[{
-label:"利润",
-data:globalData.map(i=>i.profit),
-borderWidth:3,
-tension:0.3
-}]
-}
-});
-
-}
-
-// 自动登录
-supabase.auth.getSession().then(({data})=>{
-if(data.session){
-init();
-}
-});
-
 </script>
-
 </body>
 </html>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>收益系统</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{font-family:"Segoe UI";background:#f4f6f9;margin:0;}
+.center{display:flex;justify-content:center;align-items:center;height:100vh;}
+.box{background:#fff;padding:30px;border-radius:12px;width:300px;}
+input{width:100%;padding:10px;margin:8px 0;}
+button{width:100%;padding:10px;background:#2c3e50;color:#fff;border:none;margin-top:5px;}
+.hidden{display:none;}
+#app{padding:20px;}
+select{padding:8px;margin:10px 0;}
+</style>
+</head>
+
+<body>
+
+<!-- 登录 -->
+<div id="loginPage" class="center">
+  <div class="box">
+    <h3>🔐 登录系统</h3>
+    <input id="email" placeholder="邮箱">
+    <input id="password" type="password" placeholder="密码">
+    <button onclick="login()">登录</button>
+    <button onclick="signup()">注册</button>
+    <p id="msg" style="color:red;"></p>
+  </div>
+</div>
+
+<!-- 系统 -->
+<div id="app" class="hidden">
+
+<h2>📊 收益报表</h2>
+<button onclick="logout()">退出登录</button>
+
+<label>选择月份：</label>
+<select id="monthSelect" onchange="renderMonth()"></select>
+
+<p>成本：<span id="cost"></span></p>
+<p>收入：<span id="revenue"></span></p>
+<p>利润：<span id="profit"></span></p>
+
+<canvas id="chart"></canvas>
+
+</div>
+
+<script>
+
+// 👉 填你的
+const SUPABASE_URL = "";
+const SUPABASE_KEY = "";
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let globalData = [];
+let chart;
+
+// 登录
+async function login(){
+let email=document.getElementById("email").value.trim();
+let password=document.getElementById("password").value.trim();
+
+let {error}=await supabase.auth.signInWithPassword({email,password});
+
+if(error){
+document.getElementById("msg").innerText=error.message;
+}else{
+init();
+}
+}
+
+// 注册
+async function signup(){
+let email=document.getElementById("email").value.trim();
+let password=document.getElementById("password").value.trim();
+
+let {error}=await supabase.auth.signUp({email,password});
+document.getElementById("msg").innerText=error?error.message:"注册成功";
+}
+
+// 退出
+async function logout(){
+await supabase.auth.signOut();
+location.reload();
+}
+
+// 初始化
+async function init(){
+
+document.getElementById("loginPage").classList.add("hidden");
+document.getElementById("app").classList.remove("hidden");
+
+// 当前月
+let currentMonth = new Date().getMonth()+1;
+
+// 下拉
+let select=document.getElementById("monthSelect");
+for(let i=1;i<=12;i++){
+let opt=document.createElement("option");
+opt.value=i;
+opt.innerText=i+"月";
+if(i===currentMonth) opt.selected=true;
+select.appendChild(opt);
+}
+
+// 拉数据
+let {data:fi}=await supabase.from("FI").select("*");
+let {data:fi1}=await supabase.from("FI1").select("*").single();
+
+if(!fi || !fi1){
+alert("数据读取失败，请检查RLS权限");
+return;
+}
+
+globalData=[];
+
+for(let m=1;m<=12;m++){
+
+let f=fi.find(i=>i.month==m)||{};
+
+// 成本（已修正结构）
+let cost=
+(f.other||0)+(f.other1||0)+(f.other2||0)
++(fi1.system1||0)/12
++(fi1.system2||0)/12
++(fi1.office||0)/12
++(fi1.travel||0)
++(fi1.supplies||0);
+
+// 3月特殊
+if(m==3){
+cost -= (f.other3||0);
+}
+
+// 收入
+let revenue=
+(fi1.other1||0)/12+
+(fi1.other2||0)/12+
+(fi1.other3||0)/12;
+
+globalData.push({
+cost,
+revenue,
+profit:revenue-cost
+});
+}
+
+// 图
+drawChart();
+
+// 渲染
+renderMonth();
+
+}
+
+// 渲染月份
+function renderMonth(){
+
+let m=parseInt(document.getElementById("monthSelect").value);
+
+document.getElementById("cost").innerText=globalData[m-1].cost.toFixed(2);
+document.getElementById("revenue").innerText=globalData[m-1].revenue.toFixed(2);
+document.getElementById("profit").innerText=globalData[m-1].profit.toFixed(2);
+
+// 高亮
+chart.data.datasets[0].pointRadius = globalData.map((_,i)=> i===m-1?6:3);
+chart.update();
+
+}
+
+// 图
+function drawChart(){
+
+chart=new Chart(document.getElementById("chart"),{
+type:"line",
+data:{
+labels:[1,2,3,4,5,6,7,8,9,10,11,12],
+datasets:[{
+label:"利润",
+data:globalData.map(i=>i.profit),
+borderWidth:3,
+tension:0.3
+}]
+}
+});
+
+}
+
+// 自动登录
+supabase.auth.getSession().then(({data})=>{
+if(data.session){
+init();
+}
+});
+
+</script>
+
+</body>
+</html>

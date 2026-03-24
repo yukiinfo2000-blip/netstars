@@ -92,6 +92,10 @@ async function loadData() {
     console.log("收入:", incomeData);
     console.log("支出:", expenseData);
 
+    // 👇 挂到全局（方便你调试）
+    window.incomeData = incomeData;
+    window.expenseData = expenseData;
+
     if (e1 || e2) {
         alert("数据库读取失败");
         console.error(e1, e2);

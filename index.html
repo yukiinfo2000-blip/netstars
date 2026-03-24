@@ -2,237 +2,226 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<title>财务看板</title>
+<title>呼叫中心利润看板</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
 <style>
-body{
-    margin:0;
-    font-family:"Segoe UI","PingFang SC";
-    background:#f5f7fb;
+body {
+    font-family: "HarmonyOS Sans", Arial;
+    background: #f5f7fb;
+    margin: 20px;
 }
 
-.header{
-    text-align:center;
-    padding:20px;
-    font-size:26px;
-    font-weight:600;
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
 }
 
-.topbar{
-    text-align:center;
-    margin-bottom:10px;
+/* 顶部卡片 */
+.dashboard {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
 }
 
-select{
-    padding:6px 12px;
+.card {
+    flex: 1;
+    margin: 10px;
+    padding: 20px;
+    border-radius: 15px;
+    color: white;
+    text-align: center;
+    font-size: 20px;
 }
 
-/* KPI */
-.summary{
-    display:flex;
-    gap:20px;
-    padding:0 40px;
-}
-.card{
-    flex:1;
-    padding:20px;
-    border-radius:14px;
-    color:#fff;
-    box-shadow:0 4px 15px rgba(0,0,0,0.08);
-}
-.cost{background:#5c6bc0;}
-.revenue{background:#26a69a;}
-.profit{background:#66bb6a;}
+.income { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+.expense { background: linear-gradient(135deg, #ff758c, #ff7eb3); }
+.profit { background: linear-gradient(135deg, #43e97b, #38f9d7); }
 
-.card p{
-    font-size:26px;
+.chart-box {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    margin-top: 20px;
 }
 
-/* 图表 */
-.main{
-    padding:30px 40px;
+/* 下方并排 */
+.row {
+    display: flex;
+    gap: 20px;
 }
 
-.chart-box{
-    background:#fff;
-    border-radius:14px;
-    padding:20px;
-    height:280px;
-    margin-bottom:20px;
+.row canvas {
+    width: 100% !important;
 }
 
-.grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:20px;
+/* 蒙版 */
+.overlay {
+    position: absolute;
+    background: rgba(200,200,200,0.2);
+    pointer-events: none;
 }
+
 </style>
 </head>
 
 <body>
 
-<div class="header">📊 财务看板</div>
+<h1>📊 呼叫中心利润看板</h1>
 
-<div class="topbar">
+<!-- 月份选择 -->
+<div style="text-align:center; margin-bottom:20px;">
     选择月份：
-    <select id="monthSelect"></select>
+    <input type="month" id="monthPicker">
 </div>
 
-<div class="summary">
-    <div class="card cost"><h3>成本</h3><p id="cost">0</p></div>
-    <div class="card revenue"><h3>收入</h3><p id="revenue">0</p></div>
-    <div class="card profit"><h3>利润</h3><p id="profit">0</p></div>
+<!-- KPI -->
+<div class="dashboard">
+    <div class="card income">收入<br><span id="incomeVal">0</span></div>
+    <div class="card expense">成本<br><span id="expenseVal">0</span></div>
+    <div class="card profit">利润<br><span id="profitVal">0</span></div>
 </div>
 
-<div class="main">
-    <div class="chart-box">
-        <canvas id="profitChart"></canvas>
-    </div>
+<!-- 利润图 -->
+<div class="chart-box">
+    <canvas id="profitChart"></canvas>
+</div>
 
-    <div class="grid">
-        <div class="chart-box">
-            <canvas id="revenueChart"></canvas>
-        </div>
-        <div class="chart-box">
-            <canvas id="costChart"></canvas>
-        </div>
-    </div>
+<!-- 收入 + 成本 -->
+<div class="row">
+    <div class="chart-box"><canvas id="incomeChart"></canvas></div>
+    <div class="chart-box"><canvas id="expenseChart"></canvas></div>
 </div>
 
 <script>
 
+// 🔑 替换这里
 const SUPABASE_URL = "https://ieijoczgnndiqmowadty.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllaWpvY3pnbm5kaXFtb3dhZHR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMDM4MzksImV4cCI6MjA4ODc3OTgzOX0.vkhnClBek5ZZvJfW9fZwRpKnAVRViTd3EJOsWOJNuwg";
 
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let chartCost, chartRevenue, chartProfit;
+// 当前月份
+let currentMonth = new Date().toISOString().slice(0,7);
+document.getElementById("monthPicker").value = currentMonth;
 
-const select = document.getElementById("monthSelect");
-for(let i=1;i<=12;i++){
-    let op = document.createElement("option");
-    op.value = i;
-    op.text = i + "月";
-    if(i === new Date().getMonth()+1) op.selected = true;
-    select.appendChild(op);
+// 获取数据
+async function loadData() {
+
+    const { data: incomeData } = await supabase.from('income').select('*');
+    const { data: expenseData } = await supabase.from('expenses').select('*');
+
+    let incomeMonthly = {};
+    let expenseMonthly = {};
+
+    // 按月汇总
+    incomeData.forEach(i=>{
+        let m = i.date.slice(0,7);
+        incomeMonthly[m] = (incomeMonthly[m] || 0) + Number(i.mumeric);
+    });
+
+    expenseData.forEach(i=>{
+        let m = i.date.slice(0,7);
+        expenseMonthly[m] = (expenseMonthly[m] || 0) + Number(i.mumeric);
+    });
+
+    // 所有月份
+    let months = Array.from(new Set([
+        ...Object.keys(incomeMonthly),
+        ...Object.keys(expenseMonthly)
+    ])).sort();
+
+    let incomeArr = [];
+    let expenseArr = [];
+    let profitArr = [];
+
+    months.forEach(m=>{
+        let inc = incomeMonthly[m] || 0;
+        let exp = expenseMonthly[m] || 0;
+        incomeArr.push(inc);
+        expenseArr.push(exp);
+        profitArr.push(inc - exp);
+    });
+
+    renderCharts(months, incomeArr, expenseArr, profitArr);
+    updateKPI(months, incomeArr, expenseArr);
+
 }
 
-// 获取月份（防时区）
-function getMonth(d){
-    if(!d) return null;
-    return new Date(d).getUTCMonth()+1;
+// KPI 更新
+function updateKPI(months, incomeArr, expenseArr) {
+    let selected = document.getElementById("monthPicker").value;
+
+    let idx = months.indexOf(selected);
+
+    let income = incomeArr[idx] || 0;
+    let expense = expenseArr[idx] || 0;
+    let profit = income - expense;
+
+    document.getElementById("incomeVal").innerText = income;
+    document.getElementById("expenseVal").innerText = expense;
+    document.getElementById("profitVal").innerText = profit;
 }
 
-// 🔥 自动计算一行的“总金额”
-function sumRow(row){
-    let total = 0;
+// 图表
+function renderCharts(months, incomeArr, expenseArr, profitArr) {
 
-    for(let key in row){
-        if(key === "id" || key === "date") continue;
+    let now = new Date().toISOString().slice(0,7);
+    let splitIndex = months.findIndex(m => m > now);
 
-        let val = Number(row[key]);
-        if(!isNaN(val)) total += val;
+    function splitData(arr){
+        return {
+            real: arr.map((v,i)=> i<splitIndex ? v : null),
+            forecast: arr.map((v,i)=> i>=splitIndex ? v : null)
+        }
     }
 
-    return total;
-}
+    let p = splitData(profitArr);
+    let i = splitData(incomeArr);
+    let e = splitData(expenseArr);
 
-// 核心计算
-function calcMonth(expenses, income, m){
+    new Chart(document.getElementById("profitChart"), {
+        type: 'line',
+        data: {
+            labels: months,
+            datasets: [
+                { label:"实际利润", data:p.real, borderColor:"blue", tension:0.3 },
+                { label:"预测利润", data:p.forecast, borderColor:"red", borderDash:[5,5] }
+            ]
+        }
+    });
 
-let exp = expenses.filter(e => getMonth(e.date) === m);
-let inc = income.filter(i => getMonth(i.date) === m);
+    new Chart(document.getElementById("incomeChart"), {
+        type: 'line',
+        data: {
+            labels: months,
+            datasets: [
+                { label:"收入", data:i.real, borderColor:"blue" },
+                { label:"预测", data:i.forecast, borderColor:"red", borderDash:[5,5] }
+            ]
+        }
+    });
 
-let cost = exp.reduce((s,e)=>s + sumRow(e),0);
-let revenue = inc.reduce((s,i)=>s + sumRow(i),0);
-
-return {
-    cost,
-    revenue,
-    profit: revenue - cost
-};
-}
-
-async function load(){
-
-let {data:expenses} = await db.from("expenses").select("*");
-let {data:income} = await db.from("income").select("*");
-
-console.log("expenses", expenses);
-console.log("income", income);
-
-let m = parseInt(select.value);
-
-// KPI
-let now = calcMonth(expenses, income, m);
-
-cost.innerText = now.cost.toFixed(0);
-revenue.innerText = now.revenue.toFixed(0);
-profit.innerText = now.profit.toFixed(0);
-
-// 年度数据
-let rc=[],pc=[],rr=[],pr=[],rp=[],pp=[];
-
-for(let i=1;i<=12;i++){
- let r=calcMonth(expenses,income,i);
-
- if(i<=m){
-  rc.push(r.cost); pc.push(null);
-  rr.push(r.revenue); pr.push(null);
-  rp.push(r.profit); pp.push(null);
- }else{
-  rc.push(null); pc.push(r.cost);
-  rr.push(null); pr.push(r.revenue);
-  rp.push(null); pp.push(r.profit);
- }
-}
-
-draw(rc,pc,rr,pr,rp,pp);
-}
-
-function draw(c1,c2,r1,r2,p1,p2){
-
-if(chartCost) chartCost.destroy();
-if(chartRevenue) chartRevenue.destroy();
-if(chartProfit) chartProfit.destroy();
-
-chartCost = new Chart(costChart,{
-type:"line",
-data:{
-labels:[1,2,3,4,5,6,7,8,9,10,11,12],
-datasets:[
-{label:"成本",data:c1,borderColor:"#2979ff"},
-{label:"预测",data:c2,borderColor:"#ff5252",borderDash:[6,6],fill:true,backgroundColor:"rgba(255,82,82,0.1)"}
-]
-}});
-
-chartRevenue = new Chart(revenueChart,{
-type:"line",
-data:{
-labels:[1,2,3,4,5,6,7,8,9,10,11,12],
-datasets:[
-{label:"收入",data:r1,borderColor:"#2979ff"},
-{label:"预测",data:r2,borderColor:"#ff5252",borderDash:[6,6],fill:true,backgroundColor:"rgba(255,82,82,0.1)"}
-]
-}});
-
-chartProfit = new Chart(profitChart,{
-type:"line",
-data:{
-labels:[1,2,3,4,5,6,7,8,9,10,11,12],
-datasets:[
-{label:"利润",data:p1,borderColor:"#2979ff"},
-{label:"预测",data:p2,borderColor:"#ff5252",borderDash:[6,6],fill:true,backgroundColor:"rgba(255,82,82,0.1)"}
-]
-}});
+    new Chart(document.getElementById("expenseChart"), {
+        type: 'line',
+        data: {
+            labels: months,
+            datasets: [
+                { label:"成本", data:e.real, borderColor:"blue" },
+                { label:"预测", data:e.forecast, borderColor:"red", borderDash:[5,5] }
+            ]
+        }
+    });
 
 }
 
-select.onchange = load;
-load();
+// 切换月份
+document.getElementById("monthPicker").addEventListener("change", loadData);
+
+// 初始化
+loadData();
 
 </script>
 

@@ -111,17 +111,31 @@ async function loadData() {
     let expenseMonthly = {};
 
     // ✅ 日期统一处理（关键）
-    incomeData.forEach(i=>{
-        let d = new Date(i.date);
-        let m = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,'0');
-        incomeMonthly[m] = (incomeMonthly[m] || 0) + Number(i.mumeric || 0);
-    });
+incomeData.forEach(i=>{
+    let m;
 
-    expenseData.forEach(i=>{
+    if (i.date.includes("-")) {
+        m = i.date.slice(0,7);
+    } else {
         let d = new Date(i.date);
-        let m = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,'0');
-        expenseMonthly[m] = (expenseMonthly[m] || 0) + Number(i.mumeric || 0);
-    });
+        m = d.toISOString().slice(0,7);
+    }
+
+    incomeMonthly[m] = (incomeMonthly[m] || 0) + Number(i.mumeric || 0);
+});
+
+expenseData.forEach(i=>{
+    let m;
+
+    if (i.date.includes("-")) {
+        m = i.date.slice(0,7);
+    } else {
+        let d = new Date(i.date);
+        m = d.toISOString().slice(0,7);
+    }
+
+    expenseMonthly[m] = (expenseMonthly[m] || 0) + Number(i.mumeric || 0);
+});
 
     // ✅ 自动补全年12个月
     let year = new Date().getFullYear();

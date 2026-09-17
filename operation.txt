@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>総合ダッシュボード</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- chartjs-plugin-datalabels -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700;800;900&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Noto Sans SC', 'HarmonyOS Sans SC', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(145deg, #f0f2f5 0%, #e4e8ef 100%);
+            padding: 1.8rem;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+
+        /* ===== 卡片通用 ===== */
+        .card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 1.6rem;
+            box-shadow: 0 8px 32px rgba(20, 40, 60, 0.08), 0 2px 8px rgba(0, 0, 0, 0.02);
+            padding: 1.8rem 2rem 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            margin-bottom: 1.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 12px 48px rgba(20, 40, 60, 0.12);
+            border-color: rgba(255, 255, 255, 0.9);
+        }
+
+        .card:last-child {
+            margin-bottom: 0;
+        }
+
+        /* ===== 头部通用 ===== */
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.4rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 2px solid rgba(60, 80, 110, 0.08);
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 60px;
+            height: 2px;
+            background: linear-gradient(90deg, #5a7d9b, #8ab3d0);
+            border-radius: 2px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .header-left h1 {
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: #1a2a3a;
+            letter-spacing: 0.02em;
+            background: linear-gradient(135deg, #1a2a3a, #3a5a7a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-left .badge {
+            background: linear-gradient(135deg, #eef1f6, #e2e8f0);
+            padding: 0.15rem 1.2rem;
+            border-radius: 40px;
+            font-size: .7rem;
+            color: #4a5f7a;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        /* ===== 选择器 ===== */
+        .selector-group {
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            background: rgba(245, 247, 250, 0.7);
+            backdrop-filter: blur(4px);
+            padding: .15rem .6rem .15rem 1rem;
+            border-radius: 60px;
+            border: 1px solid rgba(200, 210, 225, 0.5);
+        }
+
+        .selector-group label {
+            font-weight: 600;
+            color: #4a5f7a;
+            font-size: .8rem;
+        }
+
+        .selector-group select {
+            background: white;
+            border: 1px solid #d5dce6;
+            border-radius: 40px;
+            padding: .25rem 1.2rem .25rem .8rem;
+            font-weight: 600;
+            font-size: .85rem;
+            color: #1a2a3a;
+            outline: none;
+            cursor: pointer;
+            transition: all .2s ease;
+            appearance: auto;
+        }
+
+        .selector-group select:hover {
+            border-color: #8aafc8;
+            box-shadow: 0 2px 8px rgba(90, 125, 155, 0.15);
+        }
+
+        .selector-group select:focus {
+            border-color: #5a7d9b;
+            box-shadow: 0 0 0 4px rgba(90, 125, 155, 0.15);
+        }
+
+        /* ===== 表格 ===== */
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 1.2rem;
+            border: 1px solid rgba(200, 210, 225, 0.3);
+            background: rgba(251, 252, 254, 0.6);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .85rem;
+            min-width: 900px;
+        }
+
+        th {
+            background: linear-gradient(180deg, #f2f5f9, #e8ecf2);
+            color: #2a405a;
+            font-weight: 700;
+            padding: .8rem .5rem;
+            text-align: center;
+            border-bottom: 2px solid #dce2ea;
+            font-size: .8rem;
+            white-space: nowrap;
+            letter-spacing: 0.03em;
+        }
+
+        td {
+            padding: .5rem .3rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(220, 226, 234, 0.5);
+            color: #1a2a3a;
+            font-size: .85rem;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .category-header {
+            background: linear-gradient(90deg, #f0f3f8, #e8edf4);
+            font-weight: 700;
+            color: #1a2a3a;
+            text-align: left;
+            padding-left: 1rem;
+            border-bottom: 2px solid #dce2ea;
+            font-size: .9rem;
+        }
+
+        .category-header td {
+            padding: 0.6rem 0.5rem 0.6rem 1.2rem;
+        }
+
+        .sub-row td {
+            background: rgba(250, 252, 254, 0.5);
+            padding-left: 1.5rem;
+            text-align: center;
+        }
+
+        .sub-row .label {
+            text-align: left;
+            padding-left: 2rem;
+            color: #3a4f6a;
+            font-weight: 500;
+            font-size: .82rem;
+        }
+
+        .inquiry-num {
+            font-weight: 700;
+            color: #b88a6b;
+        }
+
+        .default-num {
+            font-weight: 600;
+            color: #2a405a;
+        }
+
+        .zero-value {
+            color: #b0c0d0;
+            font-weight: 400;
+        }
+
+        /* ===== 饼图网格 ===== */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.8rem;
+            margin-top: .3rem;
+        }
+
+        @media (max-width: 720px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+        }
+
+        .chart-card {
+            background: rgba(251, 252, 254, 0.7);
+            backdrop-filter: blur(4px);
+            border-radius: 1.4rem;
+            padding: 1.2rem 1.2rem 1.4rem;
+            border: 1px solid rgba(200, 210, 225, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .chart-card:hover {
+            border-color: rgba(90, 125, 155, 0.25);
+            box-shadow: 0 4px 20px rgba(90, 125, 155, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .chart-card .card-header {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            font-weight: 700;
+            font-size: 1rem;
+            color: #1a2a3a;
+            margin-bottom: .5rem;
+            padding-bottom: .3rem;
+            border-bottom: 1px solid rgba(200, 210, 225, 0.3);
+        }
+
+        .chart-card .card-header .badge {
+            font-size: .65rem;
+            background: linear-gradient(135deg, #e8edf4, #dce2ea);
+            padding: .05rem .8rem;
+            border-radius: 40px;
+            font-weight: 500;
+            color: #4a5f7a;
+        }
+
+        .chart-card .card-header .sub {
+            font-size: .7rem;
+            font-weight: 500;
+            color: #6a7f98;
+            margin-left: auto;
+            background: rgba(200, 210, 225, 0.3);
+            padding: .05rem .9rem;
+            border-radius: 40px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 220px;
+            max-height: 260px;
+            margin: .1rem auto .3rem;
+        }
+
+        .chart-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .chart-footer {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: .2rem 1rem;
+            margin-top: .4rem;
+            font-size: .72rem;
+            color: #3a4f6a;
+        }
+
+        .chart-footer .legend-item {
+            display: flex;
+            align-items: center;
+            gap: .3rem;
+            background: rgba(240, 243, 248, 0.5);
+            padding: 0.1rem 0.6rem;
+            border-radius: 30px;
+        }
+
+        .chart-footer .color-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        /* ===== KPI 网格 ===== */
+        .month-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.2rem;
+            margin-top: .3rem;
+        }
+
+        @media (max-width: 860px) {
+            .month-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        @media (max-width: 560px) {
+            .month-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .month-card {
+            background: rgba(251, 252, 254, 0.7);
+            backdrop-filter: blur(4px);
+            border-radius: 1.4rem;
+            border: 1px solid rgba(200, 210, 225, 0.3);
+            padding: 1rem 0.8rem 0.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .month-card:hover {
+            border-color: rgba(90, 125, 155, 0.2);
+            box-shadow: 0 4px 16px rgba(90, 125, 155, 0.06);
+            transform: translateY(-2px);
+        }
+
+        .month-card .month-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #1a2a3a;
+            text-align: center;
+            margin-bottom: .3rem;
+            padding-bottom: .3rem;
+            border-bottom: 2px solid rgba(200, 210, 225, 0.2);
+            letter-spacing: 0.05em;
+        }
+
+        .month-card .month-title .month-icon {
+            margin-right: 0.3rem;
+        }
+
+        .month-card .chart-container {
+            height: 190px;
+            max-height: 220px;
+        }
+
+        /* ===== 加载状态 ===== */
+        .loading-overlay {
+            text-align: center;
+            padding: 1.5rem;
+            color: #5a6f88;
+            font-size: .9rem;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            border: 3px solid rgba(200, 210, 225, 0.3);
+            border-top-color: #5a7d9b;
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+            margin-right: .6rem;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            color: #c48a7a;
+            background: rgba(253, 240, 237, 0.7);
+            padding: 0.8rem 1.2rem;
+            border-radius: 0.8rem;
+            text-align: center;
+            font-size: .85rem;
+        }
+
+        .empty-state {
+            color: #8a9aae;
+            padding: 1.5rem;
+            text-align: center;
+            font-size: .85rem;
+        }
+
+        /* ===== 新免税流程图 ===== */
+        .tax-free-flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: stretch;
+            justify-content: center;
+            gap: 1.2rem 0.8rem;
+            padding: 0.8rem 0.2rem;
+        }
+
+        .flow-step {
+            flex: 1 1 180px;
+            min-width: 140px;
+            max-width: 260px;
+            background: linear-gradient(145deg, #f8faff, #f0f4fa);
+            border-radius: 1.4rem;
+            border: 1px solid rgba(200, 210, 225, 0.3);
+            padding: 1.2rem 0.8rem 1rem;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(20, 40, 60, 0.04);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .flow-step:hover {
+            border-color: rgba(90, 125, 155, 0.3);
+            box-shadow: 0 8px 32px rgba(90, 125, 155, 0.08);
+            transform: translateY(-3px);
+        }
+        .flow-step .step-num {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #5a7d9b;
+            background: linear-gradient(135deg, #e5edf6, #d5e0ec);
+            display: inline-block;
+            padding: 0.15rem 0.9rem;
+            border-radius: 40px;
+            margin-bottom: 0.4rem;
+            letter-spacing: 0.05em;
+        }
+        .flow-step .step-title {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #1a2a3a;
+            margin: 0.2rem 0 0.3rem;
+        }
+        .flow-step .step-desc {
+            font-size: 0.8rem;
+            color: #3d5a73;
+            line-height: 1.6;
+            margin: 0.1rem 0;
+        }
+        .flow-step .step-desc small {
+            color: #6a7f98;
+            font-size: 0.7rem;
+            display: block;
+            margin-top: 0.1rem;
+        }
+        .flow-step .sub-badge {
+            background: rgba(200, 210, 225, 0.3);
+            border-radius: 30px;
+            padding: 0.1rem 0.7rem;
+            font-size: 0.65rem;
+            color: #3a5a7a;
+            display: inline-block;
+            margin-top: 0.2rem;
+            font-weight: 500;
+        }
+        .flow-arrow {
+            font-size: 1.8rem;
+            color: #9bb0c7;
+            align-self: center;
+            font-weight: 200;
+            padding: 0 0.1rem;
+            opacity: 0.6;
+        }
+        .flow-kiosk {
+            background: rgba(200, 210, 225, 0.15);
+            border-radius: 0.8rem;
+            padding: 0.6rem 0.3rem;
+            margin-top: 0.3rem;
+            border: 1px dashed rgba(150, 175, 195, 0.3);
+        }
+        .flow-kiosk .kiosk-row {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            font-size: 0.75rem;
+        }
+        .kiosk-badge {
+            background: rgba(200, 210, 225, 0.2);
+            padding: 0.1rem 0.7rem;
+            border-radius: 40px;
+            font-weight: 600;
+        }
+        .kiosk-badge.green {
+            background: rgba(100, 180, 120, 0.2);
+            color: #2a6b3a;
+        }
+        .kiosk-badge.red {
+            background: rgba(200, 100, 80, 0.15);
+            color: #a34a3a;
+        }
+
+        .flow-footer {
+            margin-top: 0.8rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #1a2a3a;
+            background: linear-gradient(135deg, #eef4fa, #e2eaf3);
+            padding: 0.4rem 1.5rem;
+            border-radius: 60px;
+            display: inline-block;
+            align-self: center;
+            font-weight: 600;
+        }
+
+        /* ===== 課題 & 対応策 - 新デザイン ===== */
+        .issue-section {
+            margin-top: 1.8rem;
+            border-top: 2px dashed rgba(200, 210, 225, 0.4);
+            padding-top: 1.4rem;
+        }
+
+        .issue-header {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .issue-header h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1a2a3a;
+        }
+
+        .issue-header .header-badge {
+            background: linear-gradient(135deg, #fdf0ed, #fae1dd);
+            color: #a34a3a;
+            padding: 0.15rem 1.2rem;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border: 1px solid rgba(200, 100, 80, 0.15);
+        }
+
+        .issue-split {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 1.8rem;
+            margin-top: 0.6rem;
+        }
+
+        @media (max-width: 860px) {
+            .issue-split {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+        }
+
+        .issue-column {
+            background: rgba(251, 252, 254, 0.5);
+            border-radius: 1.2rem;
+            padding: 1.2rem 1.4rem 1.4rem;
+            border: 1px solid rgba(200, 210, 225, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .issue-column:hover {
+            border-color: rgba(200, 210, 225, 0.4);
+            box-shadow: 0 4px 16px rgba(20, 40, 60, 0.04);
+        }
+
+        .issue-column .col-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #1a2a3a;
+            margin-bottom: 0.6rem;
+            padding-bottom: 0.4rem;
+            border-bottom: 2px solid rgba(200, 210, 225, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .issue-column .col-title .title-icon {
+            font-size: 1.2rem;
+        }
+
+        .issue-column .col-title .title-badge {
+            font-size: 0.65rem;
+            font-weight: 600;
+            background: rgba(200, 210, 225, 0.2);
+            padding: 0.05rem 0.7rem;
+            border-radius: 40px;
+            color: #4a5f7a;
+            margin-left: auto;
+        }
+
+        .issue-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.6rem;
+        }
+
+        @media (max-width: 480px) {
+            .issue-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .issue-item {
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 0.8rem;
+            border: 1px solid rgba(200, 210, 225, 0.15);
+            padding: 0.5rem 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.8rem;
+            color: #2a405a;
+            transition: all 0.2s ease;
+        }
+
+        .issue-item:hover {
+            border-color: rgba(200, 100, 80, 0.2);
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateX(3px);
+        }
+
+        .issue-item .icon {
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .issue-item .text {
+            font-weight: 500;
+        }
+
+        /* 対応策 - 機能モジュール */
+        .module-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-top: 0.2rem;
+        }
+
+        @media (max-width: 480px) {
+            .module-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .module-item {
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 0.8rem;
+            border: 1px solid rgba(90, 155, 120, 0.15);
+            padding: 0.5rem 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.8rem;
+            color: #1a3a2a;
+            transition: all 0.2s ease;
+        }
+
+        .module-item:hover {
+            border-color: rgba(90, 155, 120, 0.3);
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateX(3px);
+        }
+
+        .module-item .icon {
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .module-item .text {
+            font-weight: 500;
+        }
+        .module-item .tag {
+            font-size: 0.6rem;
+            font-weight: 600;
+            background: rgba(90, 155, 120, 0.12);
+            color: #2a6b3a;
+            padding: 0.05rem 0.5rem;
+            border-radius: 30px;
+            margin-left: auto;
+        }
+
+        .module-item .tag.highlight {
+            background: rgba(200, 180, 80, 0.15);
+            color: #8a7a3a;
+        }
+
+        .module-desc {
+            font-size: 0.75rem;
+            color: #5a7a6a;
+            margin-top: 0.3rem;
+            padding: 0.3rem 0.5rem;
+            background: rgba(200, 210, 225, 0.1);
+            border-radius: 0.6rem;
+            line-height: 1.6;
+        }
+
+        .module-desc .highlight-text {
+            font-weight: 600;
+            color: #2a6b3a;
+        }
+
+        /* 対応策2 カスタマサービス */
+        .solution-card {
+            margin-top: 0.8rem;
+            padding: 0.6rem 1.2rem;
+            background: linear-gradient(135deg, rgba(90, 125, 155, 0.08), rgba(90, 125, 155, 0.02));
+            border-radius: 1rem;
+            border: 1px solid rgba(90, 125, 155, 0.12);
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .solution-card .icon {
+            font-size: 1.2rem;
+        }
+
+        .solution-card .label {
+            font-weight: 700;
+            color: #1a2a3a;
+            font-size: 0.9rem;
+        }
+
+        .solution-card .desc {
+            font-weight: 500;
+            color: #3a5a7a;
+            font-size: 0.85rem;
+            background: rgba(200, 210, 225, 0.15);
+            padding: 0.1rem 0.8rem;
+            border-radius: 40px;
+        }
+
+        /* 予測問い合わせ件数 */
+        .forecast-card {
+            margin-top: 0.8rem;
+            padding: 0.6rem 1.2rem;
+            background: linear-gradient(135deg, rgba(90, 125, 155, 0.08), rgba(90, 125, 155, 0.02));
+            border-radius: 1rem;
+            border: 1px solid rgba(90, 125, 155, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .forecast-card .label {
+            font-weight: 600;
+            color: #3a5a7a;
+            font-size: 0.85rem;
+        }
+
+        .forecast-card .value {
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: #b88a6b;
+            background: rgba(200, 180, 160, 0.1);
+            padding: 0.1rem 1rem;
+            border-radius: 40px;
+        }
+
+        .forecast-card .value span {
+            font-weight: 400;
+            font-size: 0.8rem;
+            color: #6a7f98;
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 600px) {
+            body { padding: 0.8rem; }
+            .card { padding: 1rem 0.8rem 1.2rem; border-radius: 1.2rem; }
+            .header-left h1 { font-size: 1.1rem; }
+            .selector-group { padding: .1rem .4rem .1rem .8rem; flex-wrap: wrap; }
+            .selector-group select { padding: .15rem .6rem; font-size: .75rem; }
+            .month-card .chart-container { height: 150px; }
+            .chart-container { height: 170px; }
+            .month-grid { gap: 0.6rem; }
+            .chart-grid { gap: 1rem; }
+            table { font-size: .7rem; min-width: 650px; }
+            th, td { padding: .25rem .15rem; }
+            .month-card .month-title { font-size: .85rem; }
+            .chart-card .card-header { font-size: .85rem; }
+            .flow-step { flex: 1 1 140px; min-width: 120px; }
+            .issue-split { grid-template-columns: 1fr; }
+            .issue-grid { grid-template-columns: 1fr; }
+            .module-grid { grid-template-columns: 1fr; }
+        }
+
+        .col-month { min-width: 40px; }
+        .col-label { min-width: 110px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- ============================================================ -->
+        <!-- 模块1：苦情対応 -->
+        <!-- ============================================================ -->
+        <div class="card">
+            <div class="header">
+                <div class="header-left">
+                    <h1>📊 苦情対応</h1>
+                    <span class="badge">月次推移</span>
+                </div>
+                <div class="selector-group">
+                    <label for="yearSelect">📅 年度</label>
+                    <select id="yearSelect">
+                        <option value="2026">2026</option>
+                        <option value="2027">2027</option>
+                        <option value="2028">2028</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-label">業務內容</th>
+                            <th class="col-month">1月</th><th class="col-month">2月</th>
+                            <th class="col-month">3月</th><th class="col-month">4月</th>
+                            <th class="col-month">5月</th><th class="col-month">6月</th>
+                            <th class="col-month">7月</th><th class="col-month">8月</th>
+                            <th class="col-month">9月</th><th class="col-month">10月</th>
+                            <th class="col-month">11月</th><th class="col-month">12月</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr><td colspan="13" class="loading-overlay"><span class="loading-spinner"></span>データ読み込み中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- 模块2：カテゴリ別分布 -->
+        <!-- ============================================================ -->
+        <div class="card">
+            <div class="header">
+                <div class="header-left">
+                    <h1>📊 カテゴリ別分布</h1>
+                    <span class="badge">四半期別</span>
+                </div>
+                <div class="selector-group">
+                    <label for="quarterSelect">📅 四半期</label>
+                    <select id="quarterSelect">
+                        <option value="Q1">Q1 (1-3月)</option>
+                        <option value="Q2" selected>Q2 (4-6月)</option>
+                        <option value="Q3">Q3 (7-9月)</option>
+                        <option value="Q4">Q4 (10-12月)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <div class="card-header">💳 Alipay<span class="badge">カテゴリ</span><span class="sub" id="alipayQuarterLabel">Q2</span></div>
+                    <div class="chart-container"><canvas id="alipayChart"></canvas></div>
+                    <div class="chart-footer" id="alipayLegend"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="card-header">💬 WechatPay<span class="badge">カテゴリ</span><span class="sub" id="wechatQuarterLabel">Q2</span></div>
+                    <div class="chart-container"><canvas id="wechatChart"></canvas></div>
+                    <div class="chart-footer" id="wechatLegend"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- 模块3：月次業務詳細 -->
+        <!-- ============================================================ -->
+        <div class="card">
+            <div class="header">
+                <div class="header-left">
+                    <h1>📊 月次業務詳細</h1>
+                    <span class="badge">四半期別</span>
+                </div>
+                <div class="selector-group">
+                    <label for="kpiQuarterSelect">📅 四半期</label>
+                    <select id="kpiQuarterSelect">
+                        <option value="Q1">Q1 (1-3月)</option>
+                        <option value="Q2" selected>Q2 (4-6月)</option>
+                        <option value="Q3">Q3 (7-9月)</option>
+                        <option value="Q4">Q4 (10-12月)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="month-grid" id="kpiMonthGrid">
+                <div class="loading-overlay"><span class="loading-spinner"></span>読み込み中...</div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- 模块4：新免税制度 リファンド方式 + 課題・対応策 -->
+        <!-- ============================================================ -->
+        <div class="card">
+            <div class="header">
+                <div class="header-left">
+                    <h1>🧾 新免税制度 「リファンド方式」</h1>
+                    <span class="badge">2026年11月1日より</span>
+                </div>
+                <div style="font-size:0.8rem; color:#5a7d9b; background:rgba(200, 210, 225, 0.2); padding:0.15rem 1.2rem; border-radius:40px; font-weight:600;">
+                    🚀 フロー
+                </div>
+            </div>
+            <div class="tax-free-flow">
+                <!-- ステップ1 -->
+                <div class="flow-step">
+                    <div class="step-num">STEP 1</div>
+                    <div class="step-title">🏪 免税店</div>
+                    <div class="step-desc">
+                        店頭にて課税販売<br>
+                        <small>（従来の免税手続きは行わない）</small>
+                        <span style="display:block; margin-top:0.3rem; background:rgba(200, 210, 225, 0.15); border-radius:30px; padding:0.1rem 0.2rem; font-size:0.7rem;">
+                            QRコードを読み取り、<br>J-TaxRefundサイトへアクセス・登録
+                        </span>
+                        <small style="margin-top:0.2rem;">※一部店舗はOceanなどの<br>サードパーティブランドフォーム経由</small>
+                    </div>
+                </div>
+
+                <div class="flow-arrow">▶</div>
+
+                <!-- ステップ2 -->
+                <div class="flow-step">
+                    <div class="step-num">STEP 2</div>
+                    <div class="step-title">🧳 旅行者</div>
+                    <div class="step-desc">
+                        ↓ 登録ページへアクセス<br>
+                        旅券情報・連絡先・返金先を登録<br>
+                        ↓ 購入履歴を確認・登録
+                    </div>
+                </div>
+
+                <div class="flow-arrow">▶</div>
+
+                <!-- ステップ3 -->
+                <div class="flow-step">
+                    <div class="step-num">STEP 3</div>
+                    <div class="step-title">🛫 出国空港（税関手続き）</div>
+                    <div class="step-desc">
+                        下記いずれかの方法で持ち出し確認・判定
+                        <div style="margin-top:0.2rem; display:flex; flex-direction:column; gap:0.2rem;">
+                            <span class="sub-badge">① KIOSK端末 (パスポートがさす)</span>
+                            <span class="sub-badge">② Visit Japan Web (オンライン判定)</span>
+                        </div>
+                    </div>
+                    <!-- KIOSK 判定 -->
+                    <div class="flow-kiosk">
+                        <div style="font-weight:600; font-size:0.7rem; color:#1a2a3a;">KIOSK端末 判定結果</div>
+                        <div class="kiosk-row">
+                            <span class="kiosk-badge green">✅ 判定クリア → そのまま出国</span>
+                            <span class="kiosk-badge red">🔴 赤ランプ → 人工検査（税関窓口へ）</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-arrow">▶</div>
+
+                <!-- ステップ4 完了 -->
+                <div class="flow-step" style="background:linear-gradient(145deg, #eef7f2, #e2efe5); border-color:rgba(100, 180, 120, 0.2);">
+                    <div class="step-num" style="background:linear-gradient(135deg, #d0e6d9, #b8d5c7); color:#2a6b3a;">完了</div>
+                    <div class="step-title">💰 返金</div>
+                    <div class="step-desc">
+                        登録済み返金先へ<br>
+                        <strong>消費税相当額</strong>が返金
+                    </div>
+                    <div style="margin-top:0.2rem; font-size:0.7rem; color:#2a6b3a; background:rgba(100, 180, 120, 0.15); border-radius:30px; padding:0.05rem 0.7rem; display:inline-block; font-weight:600;">
+                        ✅ 出国完了
+                    </div>
+                </div>
+            </div>
+            <!-- 補足 -->
+            <div style="display:flex; justify-content:center; margin-top:0.6rem;">
+                <span style="background:rgba(200, 210, 225, 0.15); padding:0.2rem 1.5rem; border-radius:40px; font-size:0.75rem; color:#3a5a7a; border:1px solid rgba(200, 210, 225, 0.2); font-weight:500;">
+                    📌 2026年11月1日よりスタート
+                </span>
+            </div>
+
+            <!-- ===== 課題 & 対応策（新デザイン） ===== -->
+            <div class="issue-section">
+                <!-- ヘッダー -->
+                <div class="issue-header">
+                    <h2>⚠️ 課題と対応策</h2>
+                    <span class="header-badge">🚨 空港トラブル防止</span>
+                </div>
+
+                <!-- 2カラム構成：予測問題 + 対応策 -->
+                <div class="issue-split">
+                    <!-- 左：予測問題 -->
+                    <div class="issue-column">
+                        <div class="col-title">
+                            <span class="title-icon">🔮</span> 予測問題
+                            <!-- 5件の表示を削除 -->
+                        </div>
+                        <div class="issue-grid">
+                            <div class="issue-item"><span class="icon">🔄</span><span class="text">KIOSK 混みすぎ問題</span></div>
+                            <div class="issue-item"><span class="icon">👴</span><span class="text">ネット登録で詰む方（高齢者）</span></div>
+                            <div class="issue-item"><span class="icon">🚨</span><span class="text">赤ランプで時間切れフライト</span></div>
+                            <div class="issue-item"><span class="icon">📋</span><span class="text">ルール複雑で失敗する人続出</span></div>
+                            <div class="issue-item" style="grid-column: 1 / -1;"><span class="icon">⏳</span><span class="text">フライト時間に間に合わず諦める人も</span></div>
+                        </div>
+                        <!-- 予測問い合わせ件数 -->
+                        <div class="forecast-card">
+                            <span class="label">📞 予測問い合わせ件数</span>
+                            <span class="value">Alipay + WechatPay <span>→</span> 1,000<span>件以上</span></span>
+                        </div>
+                    </div>
+
+                    <!-- 右：対応策 -->
+                    <div class="issue-column" style="border-color:rgba(90, 155, 120, 0.15);">
+                        <!-- 対応策1 -->
+                        <div class="col-title">
+                            <span class="title-icon">💡</span> 対応策1
+                            <span class="title-badge" style="background:rgba(90, 155, 120, 0.12); color:#2a6b3a;">税アシスタントAPP</span>
+                        </div>
+                        <div style="font-weight:600; font-size:0.85rem; color:#1a3a2a; margin-bottom:0.3rem;">📱 アシスタントAPP提供予定（有料）</div>
+                        <div class="module-grid">
+                            <div class="module-item"><span class="icon">🔍</span><span class="text">制度情報の検索</span><span class="tag">情報</span></div>
+                            <div class="module-item"><span class="icon">📖</span><span class="text">システム操作ガイド（QAページ）</span><span class="tag">ガイド</span></div>
+                            <div class="module-item"><span class="icon">📞</span><span class="text">カスタマーサポート連絡先の集約</span><span class="tag">連絡</span></div>
+                            <div class="module-item"><span class="icon">🧭</span><span class="text">スマート問題ナビゲーション</span><span class="tag highlight">★ 中核機能</span></div>
+                            <div class="module-item"><span class="icon">❓</span><span class="text">よくある質問（FAQ）集約</span><span class="tag">FAQ</span></div>
+                            <div class="module-item"><span class="icon">🌍</span><span class="text">多言語・多地域切り替え</span><span class="tag">多言語</span></div>
+                        </div>
+                        <div class="module-desc">
+                            <span class="highlight-text">🌐 中国語・英語・日本語</span>などインターフェース言語を選択可能。<br>
+                            多様な出国ユーザーに対応
+                        </div>
+
+                        <!-- 対応策2 -->
+                        <div style="margin-top:1.2rem; padding-top:0.8rem; border-top:2px dashed rgba(200, 210, 225, 0.3);">
+                            <div class="col-title" style="border-bottom-color:rgba(200, 210, 225, 0.15);">
+                                <span class="title-icon">📞</span> 対応策2
+                            </div>
+                            <div class="solution-card">
+                                <span class="icon">💬</span>
+                                <span class="label">Alipay+WechatPay</span>
+                                <span class="desc">カスタマサービス提供</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ================================================================
+        // 🔧 Supabase 配置 - 请替换为你的实际值
+        // ================================================================
+        const SUPABASE_URL = 'https://ieijoczgnndiqmowadty.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllaWpvY3pnbm5kaXFtb3dhZHR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMDM4MzksImV4cCI6MjA4ODc3OTgzOX0.vkhnClBek5ZZvJfW9fZwRpKnAVRViTd3EJOsWOJNuwg';
+
+        // ================================================================
+        // 初始化 Supabase 客户端
+        // ================================================================
+        let supabaseClient = null;
+        try {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('✅ Supabase client initialized');
+        } catch (e) {
+            console.error('❌ Supabase initialization failed:', e);
+        }
+
+        // ================================================================
+        // 颜色配置（日本商务风 · 沉稳典雅）
+        // ================================================================
+        const COLORS = {
+            category: ['#6a8dab', '#b88a6b', '#7fa88a', '#9a7da8', '#c48a7a'],
+            kpi: ['#6a8dab', '#7fa88a', '#b88a6b', '#9a7da8', '#c48a7a', '#7a9a9a', '#8a7a9a'],
+            kpiBorder: ['#5a7d9b', '#6f9880', '#a87a5b', '#8a6d98', '#b47a6a', '#6a8a8a', '#6a5a8a'],
+            bar: 'rgba(90, 125, 155, 0.7)',
+            barBorder: '#5a7d9b'
+        };
+
+        const CATEGORIES = ['一般問い合わせ系', '決済・システム障害系', '商品・サービス品質系', '配送・受渡し系', '不正・詐欺・悪質取引系'];
+        const KPI_LABELS = ['PMS作成', 'カスタマーサポート', 'インボイス連携', '販促物発注', 'Discover店舗ページ', 'クーポン登録', 'システムAPI更新'];
+        const QUARTER_MAP = { Q1: [1, 2, 3], Q2: [4, 5, 6], Q3: [7, 8, 9], Q4: [10, 11, 12] };
+
+        // 存储图表实例
+        const chartInstances = {};
+
+        // ================================================================
+        // 从Supabase获取数据
+        // ================================================================
+        async function fetchData() {
+            if (!supabaseClient) {
+                throw new Error('Supabase client not initialized.');
+            }
+            try {
+                console.log('🔄 Fetching data from op_daily_work...');
+                const { data, error } = await supabaseClient
+                    .from('op_daily_work')
+                    .select('*')
+                    .order('work_date', { ascending: true });
+                if (error) throw error;
+                console.log(`✅ Fetched ${data ? data.length : 0} records`);
+                return data;
+            } catch (err) {
+                console.error('❌ Data fetch failed:', err);
+                throw err;
+            }
+        }
+
+        // ================================================================
+        // 销毁图表
+        // ================================================================
+        function destroyChart(key) {
+            try {
+                if (chartInstances[key] && typeof chartInstances[key].destroy === 'function') {
+                    chartInstances[key].destroy();
+                }
+            } catch (e) { /* ignore */ }
+            delete chartInstances[key];
+        }
+
+        function destroyAllCharts() {
+            Object.keys(chartInstances).forEach(k => destroyChart(k));
+        }
+
+        // ================================================================
+        // 模块1：苦情対応
+        // ================================================================
+        function aggregateByMonth(data, year) {
+            const result = {};
+            for (let m = 1; m <= 12; m++) {
+                result[m] = { wechat_inquiry: 0, wechat_exchange: 0, wechat_store_confirm: 0, ali_inquiry: 0, ali_exchange: 0, ali_store_confirm: 0 };
+            }
+            if (!data) return result;
+            data.forEach(row => {
+                if (!row.work_date) return;
+                try {
+                    const date = new Date(row.work_date);
+                    if (isNaN(date.getTime())) return;
+                    if (date.getFullYear() !== year) return;
+                    const m = date.getMonth() + 1;
+                    result[m].wechat_inquiry += Number(row.wechat_inquiry_count) || 0;
+                    result[m].wechat_exchange += Number(row.wechat_exchange_count) || 0;
+                    result[m].wechat_store_confirm += Number(row.wechat_store_confirm_count) || 0;
+                    result[m].ali_inquiry += Number(row.ali_inquiry_count) || 0;
+                    result[m].ali_exchange += Number(row.ali_exchange_count) || 0;
+                    result[m].ali_store_confirm += Number(row.ali_store_confirm_count) || 0;
+                } catch (e) { /* ignore */ }
+            });
+            return result;
+        }
+
+        function renderBusinessTable(monthlyData) {
+            const tbody = document.getElementById('tableBody');
+            if (!monthlyData || Object.keys(monthlyData).length === 0) {
+                tbody.innerHTML = `<tr><td colspan="13" class="empty-state">📭 データがありません</td></tr>`;
+                return;
+            }
+            let html = '';
+            // WechatPay
+            html += `<tr class="category-header"><td colspan="13">💬 WechatPay</td></tr>`;
+            html += `<tr class="sub-row"><td class="label">ユーザーから問合せ件数</td>`;
+            for (let m = 1; m <= 12; m++) {
+                const v = monthlyData[m] ? monthlyData[m].wechat_inquiry : 0;
+                html += `<td class="${v === 0 ? 'zero-value' : 'inquiry-num'}">${v}</td>`;
+            }
+            html += `</tr>`;
+            html += `<tr class="sub-row"><td class="label">ユーザーとやり取り件数</td>`;
+            for (let m = 1; m <= 12; m++) {
+                const v = monthlyData[m] ? monthlyData[m].wechat_exchange : 0;
+                html += `<td class="${v === 0 ? 'zero-value' : 'default-num'}">${v}</td>`;
+            }
+            html += `</tr>`;
+            html += `<tr class="sub-row"><td class="label">加盟店に確認件数</td>`;
+            for (let m = 1; m <= 12; m++) {
+                const v = monthlyData[m] ? monthlyData[m].wechat_store_confirm : 0;
+                html += `<td class="${v === 0 ? 'zero-value' : 'default-num'}">${v}</td>`;
+            }
+            html += `</tr>`;
+            // Alipay
+            html += `<tr class="category-header" style="border-top:2px solid #dce2ea;"><td colspan="13">💳 Alipay</td></tr>`;
+            html += `<tr class="sub-row"><td class="label">ユーザーから問合せ件数</td>`;
+            for (let m = 1; m <= 12; m++) {
+                const v = monthlyData[m] ? monthlyData[m].ali_inquiry : 0;
+                html += `<td class="${v === 0 ? 'zero-value' : 'inquiry-num'}">${v}</td>`;
+            }
+            html += `</tr>`;
+            html += `<tr class="sub-row"><td class="label">ユーザーとやり取り件数</td>`;
+            for (let m = 1; m <= 12; m++) {
+                const v = monthlyData[m] ? monthlyData[m].ali_exchange : 0;
+                html += `<td class="${v === 0 ? 'zero-value' : 'default-num'}">${v}</td>`;
+            }
+            html += `</tr>`;
+            html += `<tr class="sub-row"><td class="label">加盟店に確認件数</td>`;
+            for (let m = 1; m <= 12; m++) {
+                const v = monthlyData[m] ? monthlyData[m].ali_store_confirm : 0;
+                html += `<td class="${v === 0 ? 'zero-value' : 'default-num'}">${v}</td>`;
+            }
+            html += `</tr>`;
+            tbody.innerHTML = html;
+        }
+
+        // ================================================================
+        // 模块2：カテゴリ別分布
+        // ================================================================
+        function aggregateCategoryByQuarter(data, quarter) {
+            const months = QUARTER_MAP[quarter] || [4, 5, 6];
+            const ali = {}, wechat = {};
+            CATEGORIES.forEach(c => { ali[c] = 0; wechat[c] = 0; });
+            if (!data) return { aliCategory: ali, wechatCategory: wechat };
+            data.forEach(row => {
+                if (!row.work_date) return;
+                try {
+                    const date = new Date(row.work_date);
+                    if (isNaN(date.getTime())) return;
+                    const m = date.getMonth() + 1;
+                    if (!months.includes(m)) return;
+                    const ac = row.ali_inquiry_category;
+                    if (ac && ali[ac] !== undefined) ali[ac] += 1;
+                    const wc = row.wechat_inquiry_category;
+                    if (wc && wechat[wc] !== undefined) wechat[wc] += 1;
+                } catch (e) { /* ignore */ }
+            });
+            return { aliCategory: ali, wechatCategory: wechat };
+        }
+
+        function renderCategoryChart(canvasId, legendId, labelId, categoryData, quarter) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const legendEl = document.getElementById(legendId);
+            const labelEl = document.getElementById(labelId);
+            if (labelEl) labelEl.textContent = quarter;
+
+            const data = CATEGORIES.map(c => categoryData[c] || 0);
+            const total = data.reduce((a, b) => a + b, 0);
+
+            destroyChart(canvasId + 'Instance');
+
+            let legendHtml = '';
+            if (total === 0) {
+                legendHtml = '<span class="empty-state">データなし</span>';
+            } else {
+                data.forEach((val, idx) => {
+                    const pct = (val / total * 100);
+                    legendHtml += `<span class="legend-item"><span class="color-dot" style="background:${COLORS.category[idx]};"></span>${CATEGORIES[idx]} ${pct.toFixed(1)}%</span>`;
+                });
+            }
+            if (legendEl) legendEl.innerHTML = legendHtml;
+
+            const chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: CATEGORIES,
+                    datasets: [{ data: data, backgroundColor: COLORS.category, borderColor: '#ffffff', borderWidth: 2, hoverOffset: 8 }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(c) {
+                                    const t = c.dataset.data.reduce((a, b) => a + b, 0);
+                                    const p = t === 0 ? 0 : (c.raw / t * 100);
+                                    return `${c.label}: ${c.raw}件 (${p.toFixed(1)}%)`;
+                                }
+                            }
+                        },
+                        datalabels: {
+                            display: function(c) { return c.dataset.data[c.dataIndex] > 0; },
+                            color: '#ffffff',
+                            font: { weight: '700', size: 11 },
+                            formatter: function(v, c) {
+                                const t = c.dataset.data.reduce((a, b) => a + b, 0);
+                                if (t === 0 || v === 0) return '';
+                                return (v / t * 100).toFixed(1) + '%';
+                            },
+                            anchor: 'center',
+                            align: 'center'
+                        }
+                    },
+                    cutout: '50%'
+                },
+                plugins: [ChartDataLabels]
+            });
+            chartInstances[canvasId + 'Instance'] = chart;
+        }
+
+        // ================================================================
+        // 模块3：月次業務詳細
+        // ================================================================
+        function aggregateKPIByQuarter(data, quarter) {
+            const months = QUARTER_MAP[quarter] || [4, 5, 6];
+            const result = {};
+            months.forEach(m => {
+                result[m] = { pms: 0, customer_support: 0, invoice: 0, promo: 0, discover: 0, coupon: 0, wsystem: 0 };
+            });
+            if (!data) return result;
+            data.forEach(row => {
+                if (!row.work_date) return;
+                try {
+                    const date = new Date(row.work_date);
+                    if (isNaN(date.getTime())) return;
+                    const m = date.getMonth() + 1;
+                    if (!months.includes(m)) return;
+                    result[m].pms += Number(row.pms_count) || 0;
+                    result[m].customer_support += (Number(row.wechat_exchange_count) || 0) + (Number(row.ali_exchange_count) || 0);
+                    result[m].invoice += Number(row.invoice_count) || 0;
+                    result[m].promo += Number(row.promo_count) || 0;
+                    result[m].discover += Number(row.discover_count) || 0;
+                    result[m].coupon += Number(row.coupon_count) || 0;
+                    result[m].wsystem += Number(row.wsystem_count) || 0;
+                } catch (e) { /* ignore */ }
+            });
+            return result;
+        }
+
+        function renderKPIs(quarterlyData, quarter) {
+            const grid = document.getElementById('kpiMonthGrid');
+            const months = QUARTER_MAP[quarter] || [4, 5, 6];
+
+            Object.keys(chartInstances).forEach(k => {
+                if (k.startsWith('kpi_')) destroyChart(k);
+            });
+
+            if (!quarterlyData || Object.keys(quarterlyData).length === 0) {
+                grid.innerHTML = '<div class="empty-state">📭 データがありません</div>';
+                return;
+            }
+
+            grid.innerHTML = '';
+            months.forEach(month => {
+                const md = quarterlyData[month] || { pms: 0, customer_support: 0, invoice: 0, promo: 0, discover: 0, coupon: 0, wsystem: 0 };
+                const values = [md.pms || 0, md.customer_support || 0, md.invoice || 0, md.promo || 0, md.discover || 0, md.coupon || 0, md.wsystem || 0];
+
+                const card = document.createElement('div');
+                card.className = 'month-card';
+                const canvasId = `kpi_${month}`;
+                const emojis = ['📋', '💬', '📄', '📦', '🏪', '🎫', '⚙️'];
+                card.innerHTML = `<div class="month-title"><span class="month-icon">${emojis[0]}</span>${month}月</div><div class="chart-container"><canvas id="${canvasId}"></canvas></div>`;
+                grid.appendChild(card);
+
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+
+                const chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: KPI_LABELS,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: COLORS.kpi,
+                            borderColor: COLORS.kpiBorder,
+                            borderWidth: 1.5,
+                            borderRadius: 4,
+                            barPercentage: 0.6,
+                            categoryPercentage: 0.7
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'x',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { label: function(c) { return c.raw.toFixed(1); } } },
+                            datalabels: {
+                                anchor: 'end', align: 'end', color: '#3a4f6a',
+                                font: { weight: '700', size: 8 },
+                                formatter: function(v) { return v.toFixed(1); },
+                                offset: 1
+                            }
+                        },
+                        scales: {
+                            y: { min: 0, grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { color: '#6a7f98', stepSize: 1, font: { size: 9 } }, title: { display: false } },
+                            x: { grid: { display: false }, ticks: { color: '#3a4f6a', font: { size: 8, weight: '600' }, maxRotation: 25, minRotation: 10 } }
+                        },
+                        layout: { padding: { top: 14, right: 4, bottom: 4, left: 4 } }
+                    },
+                    plugins: [ChartDataLabels]
+                });
+                chartInstances[canvasId] = chart;
+            });
+        }
+
+        // ================================================================
+        // 主加载函数
+        // ================================================================
+        let cachedData = null;
+
+        async function loadDashboard() {
+            try {
+                const data = await fetchData();
+                cachedData = data;
+
+                if (!data || data.length === 0) {
+                    document.getElementById('tableBody').innerHTML = `<tr><td colspan="13" class="empty-state">📭 データがありません</td></tr>`;
+                    document.getElementById('alipayLegend').innerHTML = '<span class="empty-state">データなし</span>';
+                    document.getElementById('wechatLegend').innerHTML = '<span class="empty-state">データなし</span>';
+                    document.getElementById('kpiMonthGrid').innerHTML = '<div class="empty-state">📭 データがありません</div>';
+                    return;
+                }
+
+                // 模块1
+                const year = parseInt(document.getElementById('yearSelect').value) || 2026;
+                const monthlyData = aggregateByMonth(data, year);
+                renderBusinessTable(monthlyData);
+
+                // 模块2
+                const quarter = document.getElementById('quarterSelect').value || 'Q2';
+                const { aliCategory, wechatCategory } = aggregateCategoryByQuarter(data, quarter);
+                renderCategoryChart('alipayChart', 'alipayLegend', 'alipayQuarterLabel', aliCategory, quarter);
+                renderCategoryChart('wechatChart', 'wechatLegend', 'wechatQuarterLabel', wechatCategory, quarter);
+
+                // 模块3
+                const kpiQuarter = document.getElementById('kpiQuarterSelect').value || 'Q2';
+                const kpiData = aggregateKPIByQuarter(data, kpiQuarter);
+                renderKPIs(kpiData, kpiQuarter);
+
+                // ---- 绑定事件 ----
+                document.getElementById('yearSelect').addEventListener('change', function() {
+                    const y = parseInt(this.value);
+                    const md = aggregateByMonth(cachedData, y);
+                    renderBusinessTable(md);
+                });
+
+                document.getElementById('quarterSelect').addEventListener('change', function() {
+                    const q = this.value;
+                    const { aliCategory: ac, wechatCategory: wc } = aggregateCategoryByQuarter(cachedData, q);
+                    renderCategoryChart('alipayChart', 'alipayLegend', 'alipayQuarterLabel', ac, q);
+                    renderCategoryChart('wechatChart', 'wechatLegend', 'wechatQuarterLabel', wc, q);
+                });
+
+                document.getElementById('kpiQuarterSelect').addEventListener('change', function() {
+                    const q = this.value;
+                    const kd = aggregateKPIByQuarter(cachedData, q);
+                    renderKPIs(kd, q);
+                });
+
+                console.log('✅ 全てのダッシュボードが正常に読み込まれました');
+
+            } catch (err) {
+                console.error('❌ 加载失败:', err);
+                document.getElementById('tableBody').innerHTML = `<tr><td colspan="13" class="error-message">⚠️ ${err.message}</td></tr>`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📋 DOM loaded, initializing dashboard...');
+            loadDashboard();
+        });
+    </script>
+</body>
+</html>
